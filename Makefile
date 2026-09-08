@@ -1,8 +1,15 @@
 ARCH_FLAGS = -arch arm64 -arch x86_64
 
+# Development logging (spdlog sinks + ~/reframe.{info,debug}.log): make DEBUG=1
+# Release builds leave it off, which keeps spdlog at level "off" (see global.h
+# and init_log() in Reframe360Factory.cpp) so no log files are created.
+ifdef DEBUG
+DEBUG_FLAGS = -DDEBUG
+endif
+
 OFXPATH = /Library/Application\ Support/Blackmagic\ Design/DaVinci\ Resolve/Developer/OpenFX
 GLMPATH = glm
-CXXFLAGS = ${ARCH_FLAGS} -DDEBUG -std=c++11 -Wno-deprecated-declarations -fvisibility=hidden -Iopenfx-supportext -I$(OFXPATH)/Support/include -I$(OFXPATH)/Support/Plugins/include -I$(OFXPATH)/OpenFX-1.4/include -I$(GLMPATH) -Ispdlog/include -Ijson/single_include -Iimages -I/opt/homebrew/Cellar/rtmidi/5.0.0/include
+CXXFLAGS = ${ARCH_FLAGS} $(DEBUG_FLAGS) -std=c++11 -Wno-deprecated-declarations -fvisibility=hidden -Iopenfx-supportext -I$(OFXPATH)/Support/include -I$(OFXPATH)/Support/Plugins/include -I$(OFXPATH)/OpenFX-1.4/include -I$(GLMPATH) -Ispdlog/include -Ijson/single_include -Iimages -I/opt/homebrew/Cellar/rtmidi/5.0.0/include
 CFLAGS = ${ARCH_FLAGS}
 LDFLAGS = ${ARCH_FLAGS} -bundle -fvisibility=hidden -F/Library/Frameworks -framework OpenCL -framework OpenGL -framework CoreAudio -framework CoreMIDI -framework Metal -framework AppKit -lspdlog -Lspdlog/build
 
@@ -75,7 +82,7 @@ install: build/OverlayReframe360.ofx
 	mkdir -p $(BUNDLE_DIR)
 	cp build/OverlayReframe360.ofx $(BUNDLE_DIR)
 	cp -a build/OverlayReframe360.ofx.bundle /Library/OFX/Plugins/
-	zip build/OverlayReframe360.ofx.bundle.zip -r build/OverlayReframe360.ofx.bundle
+	cd build && rm -f OverlayReframe360.ofx.bundle.zip && zip -q -r OverlayReframe360.ofx.bundle.zip OverlayReframe360.ofx.bundle
 
 .DEFAULT_GOAL := all
 .PHONY: all
