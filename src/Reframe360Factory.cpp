@@ -53,7 +53,23 @@ void Reframe360Factory::describe(OFX::ImageEffectDescriptor& p_Desc)
     p_Desc.setSupportsOpenCLRender(true);
     p_Desc.setSupportsMetalRender(true);
 
-    p_Desc.setOverlayInteractDescriptor(new Reframe360OverlayDescriptor);
+    Reframe360OverlayDescriptor* overlay = new Reframe360OverlayDescriptor;
+    p_Desc.setOverlayInteractDescriptor(overlay);
+
+    // Resolve 20 ships a support library that unconditionally registers the
+    // overlay as kOfxImageEffectPluginPropOverlayInteractV2 (see
+    // ofxsImageEffect.cpp). Under OpenFX 1.5 a V2 overlay is expected to draw
+    // through OfxDrawSuiteV1, so the host hands the interact an OpenGL context
+    // with no drawable at all: glCheckFramebufferStatus returns
+    // GL_FRAMEBUFFER_UNDEFINED, the viewport is 0x0, and every draw call fails
+    // with GL_INVALID_FRAMEBUFFER_OPERATION -- an invisible overlay.
+    //
+    // This interact draws in OpenGL, so put it back on the V1 entry point.
+    // Resolve still honours V1: it then binds a real FBO with a real viewport.
+    p_Desc.getPropertySet().propSetPointer(kOfxImageEffectPluginPropOverlayInteractV1,
+                                           (void*)overlay->getMainEntry(), 0);
+    p_Desc.getPropertySet().propSetPointer(kOfxImageEffectPluginPropOverlayInteractV2,
+                                           (void*)0, 0);
 }
 
 
