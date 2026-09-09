@@ -1,0 +1,52 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "windows",
+      "displayName": "Windows x64 (MSVC + Ninja, Release)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/windows",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_MAKE_PROGRAM": "${sourceDir}/.venv/Scripts/ninja.exe",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "Windows x64 (RelWithDebInfo + reframe.*.log)",
+      "inherits": "windows",
+      "binaryDir": "${sourceDir}/out/windows-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "REFRAME_DEBUG_LOG": "ON"
+      }
+    },
+    {
+      "name": "macos",
+      "displayName": "macOS universal (arm64 + x86_64, Release)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/macos",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows", "configurePreset": "windows" },
+    { "name": "windows-debug", "configurePreset": "windows-debug" },
+    { "name": "macos", "configurePreset": "macos" }
+  ]
+}
