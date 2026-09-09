@@ -18,6 +18,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# src/MetalKernel.mm compiles at the same locked standard (ignored off Apple).
+set(CMAKE_OBJCXX_STANDARD 14)
+set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+set(CMAKE_OBJCXX_EXTENSIONS OFF)
+
 # ---------------------------------------------------------------- paths / options
 
 if(WIN32)
@@ -47,20 +52,33 @@ if(WIN32)
   # Resolve's SDK ships no OpenCL import library and the Windows SDK has none. Build one
   # at configure time from cmake/OpenCL.def against the system ICD loader (System32\OpenCL.dll).
   # CMAKE_AR is lib.exe (absolute path), so this works without vcvars on PATH.
-  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-  execute_process(
-    COMMAND "${CMAKE_AR}" /nologo "/def:${CMAKE_SOURCE_DIR}/cmake/OpenCL.def" /machine:x64
-            "/out:${CMAKE_BINARY_DIR}/lib/OpenCL.lib"
-    RESULT_VARIABLE _rc
-    OUTPUT_VARIABLE _lib_out
-    ERROR_VARIABLE _lib_out)
-  if(NOT _rc EQUAL 0)
-    message(FATAL_ERROR "Failed to build OpenCL.lib from cmake/OpenCL.def (exit ${_rc}):\n${_lib_out}")
+  if(NOT CMAKE_AR)
+    message(FATAL_ERROR "CMAKE_AR is empty: cannot build OpenCL.lib. Expected MSVC's lib.exe.")
+  endif()
+
+  set(_opencl_def "${CMAKE_SOURCE_DIR}/cmake/OpenCL.def")
+  set(_opencl_lib "${CMAKE_BINARY_DIR}/lib/OpenCL.lib")
+
+  # Only rebuild when stale: rewriting the .lib on every re-configure bumps its mtime and
+  # forces a needless relink of the module.
+  if(NOT EXISTS "${_opencl_lib}" OR "${_opencl_def}" IS_NEWER_THAN "${_opencl_lib}")
+    message(STATUS "Building OpenCL.lib from cmake/OpenCL.def")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+    execute_process(
+      COMMAND "${CMAKE_AR}" /nologo "/def:${_opencl_def}" /machine:x64 "/out:${_opencl_lib}"
+      RESULT_VARIABLE _rc
+      OUTPUT_VARIABLE _lib_out
+      ERROR_VARIABLE _lib_out)
+    if(NOT _rc EQUAL 0)
+      message(FATAL_ERROR "Failed to build OpenCL.lib from cmake/OpenCL.def (exit ${_rc}):\n${_lib_out}")
+    endif()
+  else()
+    message(STATUS "Building OpenCL.lib from cmake/OpenCL.def - skipped (up to date)")
   endif()
 
   add_library(OpenCL::OpenCL STATIC IMPORTED)
   set_target_properties(OpenCL::OpenCL PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/lib/OpenCL.lib"
+    IMPORTED_LOCATION "${_opencl_lib}"
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/OpenCL-Headers")
 elseif(APPLE)
   add_library(OpenCL::OpenCL INTERFACE IMPORTED)
@@ -114,9 +132,13 @@ set_target_properties(OverlayReframe360 PROPERTIES
   PREFIX ""
   SUFFIX ".ofx"
   CXX_VISIBILITY_PRESET hidden
+  OBJCXX_VISIBILITY_PRESET hidden
   VISIBILITY_INLINES_HIDDEN ON
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/OverlayReframe360.ofx.bundle/Contents/${OFX_ARCH_DIR}"
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+  # ARCHIVE and PDB both leave the bundle: MSVC drops an import .lib/.exp next to the
+  # module, and a RelWithDebInfo .pdb would otherwise be shipped by install().
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+  PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 configure_file(cmake/Info.plist
   "${CMAKE_BINARY_DIR}/OverlayReframe360.ofx.bundle/Contents/Info.plist" COPYONLY)
@@ -179,9 +201,19 @@ else()
             "xxd not found: images/*.png.h left untouched (install xxd and re-configure)")
 endif()
 
+set(_kernel_commands)
+if(REGEN_PYTHON)
+  list(APPEND _kernel_commands
+    COMMAND "${REGEN_PYTHON}" metal2string.py src/MetalKernel.metal src/MetalKernel.h
+    COMMAND "${REGEN_PYTHON}" HardcodeKernel.py src/OpenCLKernel src/OpenCLKernel.cl)
+else()
+  list(APPEND _kernel_commands
+    COMMAND "${CMAKE_COMMAND}" -E echo
+            "python not found: src/MetalKernel.h and src/OpenCLKernel.h left untouched")
+endif()
+
 add_custom_target(regen-headers
-  COMMAND "${REGEN_PYTHON}" metal2string.py src/MetalKernel.metal src/MetalKernel.h
-  COMMAND "${REGEN_PYTHON}" HardcodeKernel.py src/OpenCLKernel src/OpenCLKernel.cl
+  ${_kernel_commands}
   ${_xxd_commands}
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   COMMENT "Regenerating committed kernel/image headers")
