@@ -22,3 +22,9 @@
 - `gh repo fork --remote --remote-name origin` refuses to rename an existing `origin`.
 - Windows SDK 10.0.26100 ships `OpenGL32.Lib` + `GlU32.Lib` but **no `OpenCL.lib`** — needs Khronos `OpenCL-Headers` + `OpenCL-ICD-Loader` (or the SDK) vendored project-scoped.
 - `cl.exe` needs `vcvars64.bat`; CMake should be run from a shell that sourced it, or use `-G Ninja` with `CMAKE_C_COMPILER`/`CXX` pointing at the full path.
+- `cmake/OpenCL.def` — 11 exports used by `src/OpenCLKernel.cpp`; lib.exe `/def` → import lib for System32 `OpenCL.dll`. Verified 2026-09-09: builds, test exe links + runs.
+- `OpenCL-Headers/` — Khronos headers submodule pinned to `v2026.05.29`; needs `CL_TARGET_OPENCL_VERSION=120` on the target.
+- `src/OpenCLKernel.cpp` already has `#ifdef _WIN64` branches and `<CL/cl.h>` — was Windows-buildable once; only core CL 1.x calls, no extensions.
+- Spike 2026-09-09 (throwaway): venv cmake + ninja + MSVC via vcvars64 configure and build a MODULE `.ofx` end to end; `.ofx` lands in `LIBRARY_OUTPUT_DIRECTORY`, `.lib`/`.exp` in `ARCHIVE_OUTPUT_DIRECTORY`, `CMAKE_AR` = lib.exe absolute path.
+- `OpenFX-1.4/include/ofxCore.h:26` — `OfxExport` = `extern __declspec(dllexport)` on Windows; the Support lib defines the entry points, nothing to add.
+- `Support/Library/ofxsHWNDInteract.cpp` — referenced only by its own header; not needed for `OFX::OverlayInteract`. Two reviewer models disagreed on this; verified by grep.

@@ -2,6 +2,16 @@
 
 Newest at top. When the task is finished, add `STATUS: complete` on the first line.
 
+## Session 2026-09-09 — OpenCL deps (Phase 0 complete)
+- Brainstormed the OpenCL dependency (bounded); cross-checked with Kimi K3 via OpenRouter, which agreed.
+- **Decision:** `OpenCL-Headers` submodule @ v2026.05.29 + committed `cmake/OpenCL.def` → import lib via
+  `CMAKE_AR` at configure time; `CL_TARGET_OPENCL_VERSION=120` on the target. ICD-loader submodule and
+  runtime shim rejected; `/DELAYLOAD` deferred. → `specs/01-windows-port.md` updated.
+- Verified with a throwaway exe: def → lib.exe → link → runs against System32 OpenCL.dll.
+
+### Next action
+Phase 1: `CMakeLists.txt` skeleton (brainstorm the layout first — it is a design phase).
+
 ## Session 2026-09-09 — bootstrap
 - Forked yannpom/OverlayReframe360 → hipur/OverlayReframe360; `origin` = fork, `upstream` = yannpom.
 - Applied the project workflow scaffold (CLAUDE.md merged with upstream's, `specs/`, `plans/`, `/wrapup`,
@@ -11,10 +21,6 @@ Newest at top. When the task is finished, add `STATUS: complete` on the first li
 - Started MSVC Build Tools 2022 install via winget (system-level, user-approved exception).
 - Wrote `specs/00-overview.md` + `specs/01-windows-port.md` with locked decisions: MSVC, CMake both platforms.
 - **Decision:** project-scoped installs everywhere; MSVC is the one approved exception → recorded in CLAUDE.md + spec.
-
-### Next action
-MSVC is installed and verified (cl 19.44, SDK 10.0.26100, opengl32.lib + glu32.lib present, OpenCL.lib NOT in SDK).
-Next: resolve the OpenCL headers/ICD question (spec open question 2, project-scoped), then Phase 1 CMake skeleton.
 
 ### Errors
 | Error | Attempt | Resolution |

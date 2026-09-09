@@ -1,0 +1,17 @@
+; Import library stub for the system OpenCL.dll (Khronos ICD loader in System32).
+; Only the entry points src/OpenCLKernel.cpp calls. Regenerate the list with:
+;   grep -oE "\bcl[A-Z][A-Za-z]+\(" src/OpenCLKernel.cpp | tr -d "(" | sort -u
+; CMake turns this into OpenCL.lib via ${CMAKE_AR} /def:OpenCL.def /machine:x64.
+LIBRARY OpenCL
+EXPORTS
+clBuildProgram
+clCreateBuffer
+clCreateKernel
+clCreateProgramWithSource
+clEnqueueNDRangeKernel
+clGetCommandQueueInfo
+clGetKernelWorkGroupInfo
+clGetProgramBuildInfo
+clReleaseMemObject
+clSetKernelArg
+clWaitForEvents

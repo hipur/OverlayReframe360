@@ -10,3 +10,6 @@
 [submodule "json"]
 	path = json
 	url = https://github.com/nlohmann/json.git
+[submodule "OpenCL-Headers"]
+	path = OpenCL-Headers
+	url = https://github.com/KhronosGroup/OpenCL-Headers.git

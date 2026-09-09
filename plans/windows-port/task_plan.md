@@ -8,14 +8,16 @@ at a time, then install + verify in Resolve. Never touch the kernels.
 
 ## Phases
 
-- [ ] **Phase 0 — Toolchain (project-scoped)**
+- [x] **Phase 0 — Toolchain (project-scoped)**
   - [x] `.venv` with cmake + ninja
   - [x] MSVC Build Tools 2022 + VCTools workload installed (approved system-level exception) — cl 19.44, Windows SDK 10.0.26100
-  - [ ] OpenCL headers + import lib located or vendored (project-scoped)
-- [ ] **Phase 1 — CMake skeleton**
-  - [ ] `CMakeLists.txt` building the Support library + openfx-supportext + `src/*.cpp` on Windows
-  - [ ] spdlog via `add_subdirectory`
-  - [ ] custom commands for generated headers (no-op when up to date)
+  - [x] OpenCL headers + import lib: `OpenCL-Headers` submodule @ v2026.05.29 + `cmake/OpenCL.def` (spec updated)
+- [ ] **Phase 1 — CMake skeleton** (design v3 locked in spec after Gemini 3.1 Pro + Kimi K3 review)
+  - [ ] `CMakeLists.txt`: MODULE target, platform-split sources, `OFX_SDK_DIR`, spdlog subdirectory,
+        OpenCL import lib, bundle output dirs + `cmake/Info.plist`, install, `regen-headers`, 64-bit guard
+  - [ ] `CMakePresets.json` (`windows`, `macos`) + `build.cmd`
+  - [ ] gate: configure OK; spdlog + Support sources + `OpenCL.lib` build; `dumpbin /exports` shows the
+        two OFX entry points once the `.ofx` links; record `src/` failures as the Phase 2 list
 - [ ] **Phase 2 — Platform seams** (one commit each, see spec table)
   - [ ] GL / CL includes
   - [ ] `init_log()` home dir
