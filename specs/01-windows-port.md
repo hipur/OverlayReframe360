@@ -13,8 +13,8 @@ The plugin builds on Windows from this repo, installs into Resolve's OFX folder,
 ### Toolchain: MSVC Build Tools 2022 (x64)
 
 - **Why:** Resolve's Windows OFX SDK, its `GainPlugin` sample, and every shipping Windows OFX plugin are
-  MSVC-built. The Support library (`ofxsHWNDInteract.cpp` etc.) assumes the Windows SDK. OpenCL/OpenGL import
-  libs come from the Windows SDK and the OpenCL SDK used by Blackmagic.
+  MSVC-built. The Support library assumes the Windows SDK. OpenGL import libs come from the Windows SDK;
+  OpenCL's does not (see "OpenCL dependency" below).
 - **Project-scoping rule and its one exception:** the user's standing rule is *every* install is project-scoped.
   MSVC Build Tools is the single, explicitly approved system-level exception (approved 2026-09-09). Everything
   else stays project-local: CMake + Ninja are pip-installed into `.venv/`; any other binary goes into `tools/`
@@ -70,8 +70,9 @@ process already has loaded.
 - **Headers:** `OpenCL-Headers/` submodule (KhronosGroup/OpenCL-Headers), pinned to release tag
   `v2026.05.29`. Header-only. Bump by checking out a newer tag, never `main`.
 - **Import lib:** `cmake/OpenCL.def` lists the 11 entry points `src/OpenCLKernel.cpp` calls. CMake runs
-  `${CMAKE_AR} /def:cmake/OpenCL.def /machine:x64 /out:<build>/OpenCL.lib` as a custom command at
-  configure time (`CMAKE_AR` is lib.exe under MSVC, absolute path, so it works without vcvars on PATH).
+  `${CMAKE_AR} /def:cmake/OpenCL.def /machine:x64 /out:<build>/lib/OpenCL.lib` via `execute_process` at
+  configure time, skipped when the lib is newer than the `.def` (`CMAKE_AR` is lib.exe under MSVC, absolute
+  path). The lib is a pure function of the `.def`; after a toolchain swap delete it by hand.
   x64 exports are undecorated, so bare names suffice. Verified: lib.exe accepts the def, a test program
   links and runs against the system DLL.
 - **Version pin:** `target_compile_definitions(... PRIVATE CL_TARGET_OPENCL_VERSION=120)`. Without it
@@ -93,9 +94,9 @@ OverlayReframe360.ofx.bundle/
       OverlayReframe360.ofx     # the DLL, renamed
 ```
 
-Install target copies the bundle to `C:\Program Files\Common Files\OFX\Plugins\`. That folder is normally
-admin-only; the install step should detect a permission failure and say so rather than silently doing
-nothing. Resolve must be restarted to pick the plugin up.
+Install target copies the bundle to `C:\Program Files\Common Files\OFX\Plugins\`. That folder is
+admin-only; run `cmake --install` from an elevated shell — CMake fails loudly otherwise, no extra
+detection. Resolve must be restarted to pick the plugin up.
 
 ### Compiler settings (Windows)
 
@@ -104,8 +105,9 @@ nothing. Resolve must be restarted to pick the plugin up.
   C++11-compatible.
 - Warnings: `/W3` baseline; do not turn on `/WX` until the port compiles clean.
 - Link: generated `OpenCL.lib` (see above), `opengl32.lib`, `glu32.lib`. No CUDA.
-- Exports: the OFX entry points `OfxGetNumberOfPlugins` / `OfxGetPlugin` are exported by the Support library
-  with `__declspec(dllexport)` under `WINDOWS` — verify the define name the shipped Support lib uses.
+- Exports: `OfxExport` (`OpenFX-1.4/include/ofxCore.h:25`) is `extern __declspec(dllexport)` when `WIN32`
+  or `WIN64` is defined — our `WIN32` compile definition is load-bearing. Verified 2026-09-09.
+- `ofxsOGLTextRenderer.cpp` / `ofxsOGLFontData.cpp` compile clean on MSVC (verified Phase 1).
 
 ### Code seams (what changes, what does not)
 
@@ -132,4 +134,5 @@ nothing. Resolve must be restarted to pick the plugin up.
 
 - Does Resolve 20 on Windows honour the same V1 overlay override, or does the Windows Support library differ?
   (Diff `Support/Library/ofxsImageEffect.cpp` mac vs Windows once both are on disk.)
-- Font rendering: `ofxsOGLTextRenderer` from openfx-supportext is used for text; confirm it compiles on MSVC.
+- Phase 4 (Makefile retirement) must decide: release `.ofx.bundle.zip` parity (Makefile emits one, CMake
+  does not yet); whether the mac bundle still loads with the now-shipped `Info.plist`; venv python on mac.
